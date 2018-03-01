@@ -3,6 +3,21 @@
 help:
 	@echo "just is a convenient command runner. Try just -l"
 
+docker +ARGS:
+	#!/bin/bash
+	set -eu
+	set -o pipefail
+
+	# When not in a justfile set the directory
+	# cd "$( dirname "$0" )/.."
+	IMAGE="pingcap/tikv:local"
+
+	DOCKER_ARGS=${DOCKER_ARGS:-""}
+	docker run -it --rm $DOCKER_ARGS \
+		-v "$PWD:$PWD" -w "$PWD" \
+		-v "$PWD/.cargo:/root/.cargo" \
+		"$IMAGE" {{ARGS}}
+
 # Setup the development docker image
 setup-docker:
 	#!/bin/bash
