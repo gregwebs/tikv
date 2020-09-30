@@ -38,7 +38,7 @@ use kvproto::tikvpb::*;
 use raftstore::router::RaftStoreRouter;
 use raftstore::store::{Callback, CasualMessage};
 use raftstore::{DiscardReason, Error as RaftStoreError};
-use security::{check_common_name, SecurityManager};
+use security::{validate_common_name, SecurityManager};
 use tikv_util::future::{paired_future_callback, poll_future_notify};
 use tikv_util::mpsc::batch::{unbounded, BatchCollector, BatchReceiver, Sender};
 use tikv_util::worker::Scheduler;
@@ -131,7 +131,8 @@ impl<T: RaftStoreRouter<RocksEngine> + 'static, E: Engine, L: LockManager> Servi
 macro_rules! handle_request {
     ($fn_name: ident, $future_name: ident, $req_ty: ident, $resp_ty: ident) => {
         fn $fn_name(&mut self, ctx: RpcContext<'_>, req: $req_ty, sink: UnarySink<$resp_ty>) {
-            if !check_common_name(self.security_mgr.cert_allowed_cn(), &ctx) {
+            if let Err(status) = validate_common_name(&self.security_mgr, &ctx) {
+                ctx.spawn(async move { sink.fail(status); });
                 return;
             }
             let begin_instant = Instant::now_coarse();
@@ -297,7 +298,10 @@ impl<T: RaftStoreRouter<RocksEngine> + 'static, E: Engine, L: LockManager> Tikv
     }
 
     fn coprocessor(&mut self, ctx: RpcContext<'_>, req: Request, sink: UnarySink<Response>) {
-        if !check_common_name(self.security_mgr.cert_allowed_cn(), &ctx) {
+        if let Err(status) = validate_common_name(&self.security_mgr, &ctx) {
+            ctx.spawn(async move {
+                sink.fail(status);
+            });
             return;
         }
         let begin_instant = Instant::now_coarse();
@@ -328,7 +332,10 @@ impl<T: RaftStoreRouter<RocksEngine> + 'static, E: Engine, L: LockManager> Tikv
         req: RegisterLockObserverRequest,
         sink: UnarySink<RegisterLockObserverResponse>,
     ) {
-        if !check_common_name(self.security_mgr.cert_allowed_cn(), &ctx) {
+        if let Err(status) = validate_common_name(&self.security_mgr, &ctx) {
+            ctx.spawn(async move {
+                sink.fail(status);
+            });
             return;
         }
         let begin_instant = Instant::now_coarse();
@@ -371,7 +378,10 @@ impl<T: RaftStoreRouter<RocksEngine> + 'static, E: Engine, L: LockManager> Tikv
         req: CheckLockObserverRequest,
         sink: UnarySink<CheckLockObserverResponse>,
     ) {
-        if !check_common_name(self.security_mgr.cert_allowed_cn(), &ctx) {
+        if let Err(status) = validate_common_name(&self.security_mgr, &ctx) {
+            ctx.spawn(async move {
+                sink.fail(status);
+            });
             return;
         }
         let begin_instant = Instant::now_coarse();
@@ -418,7 +428,10 @@ impl<T: RaftStoreRouter<RocksEngine> + 'static, E: Engine, L: LockManager> Tikv
         req: RemoveLockObserverRequest,
         sink: UnarySink<RemoveLockObserverResponse>,
     ) {
-        if !check_common_name(self.security_mgr.cert_allowed_cn(), &ctx) {
+        if let Err(status) = validate_common_name(&self.security_mgr, &ctx) {
+            ctx.spawn(async move {
+                sink.fail(status);
+            });
             return;
         }
         let begin_instant = Instant::now_coarse();
@@ -459,7 +472,10 @@ impl<T: RaftStoreRouter<RocksEngine> + 'static, E: Engine, L: LockManager> Tikv
         mut req: PhysicalScanLockRequest,
         sink: UnarySink<PhysicalScanLockResponse>,
     ) {
-        if !check_common_name(self.security_mgr.cert_allowed_cn(), &ctx) {
+        if let Err(status) = validate_common_name(&self.security_mgr, &ctx) {
+            ctx.spawn(async move {
+                sink.fail(status);
+            });
             return;
         }
         let begin_instant = Instant::now_coarse();
@@ -507,7 +523,10 @@ impl<T: RaftStoreRouter<RocksEngine> + 'static, E: Engine, L: LockManager> Tikv
         mut req: UnsafeDestroyRangeRequest,
         sink: UnarySink<UnsafeDestroyRangeResponse>,
     ) {
-        if !check_common_name(self.security_mgr.cert_allowed_cn(), &ctx) {
+        if let Err(status) = validate_common_name(&self.security_mgr, &ctx) {
+            ctx.spawn(async move {
+                sink.fail(status);
+            });
             return;
         }
         let begin_instant = Instant::now_coarse();
@@ -559,7 +578,8 @@ impl<T: RaftStoreRouter<RocksEngine> + 'static, E: Engine, L: LockManager> Tikv
         req: Request,
         mut sink: ServerStreamingSink<Response>,
     ) {
-        if !check_common_name(self.security_mgr.cert_allowed_cn(), &ctx) {
+        if let Err(status) = validate_common_name(&self.security_mgr, &ctx) {
+            sink.set_status(status);
             return;
         }
         let begin_instant = Instant::now_coarse();
@@ -600,7 +620,10 @@ impl<T: RaftStoreRouter<RocksEngine> + 'static, E: Engine, L: LockManager> Tikv
         stream: RequestStream<RaftMessage>,
         sink: ClientStreamingSink<Done>,
     ) {
-        if !check_common_name(self.security_mgr.cert_allowed_cn(), &ctx) {
+        if let Err(status) = validate_common_name(&self.security_mgr, &ctx) {
+            ctx.spawn(async move {
+                sink.fail(status);
+            });
             return;
         }
         let ch = self.ch.clone();
@@ -631,7 +654,10 @@ impl<T: RaftStoreRouter<RocksEngine> + 'static, E: Engine, L: LockManager> Tikv
         stream: RequestStream<BatchRaftMessage>,
         sink: ClientStreamingSink<Done>,
     ) {
-        if !check_common_name(self.security_mgr.cert_allowed_cn(), &ctx) {
+        if let Err(status) = validate_common_name(&self.security_mgr, &ctx) {
+            ctx.spawn(async move {
+                sink.fail(status);
+            });
             return;
         }
         info!("batch_raft RPC is called, new gRPC stream established");
@@ -669,7 +695,10 @@ impl<T: RaftStoreRouter<RocksEngine> + 'static, E: Engine, L: LockManager> Tikv
         stream: RequestStream<SnapshotChunk>,
         sink: ClientStreamingSink<Done>,
     ) {
-        if !check_common_name(self.security_mgr.cert_allowed_cn(), &ctx) {
+        if let Err(status) = validate_common_name(&self.security_mgr, &ctx) {
+            ctx.spawn(async move {
+                sink.fail(status);
+            });
             return;
         }
         let task = SnapTask::Recv { stream, sink };
@@ -690,7 +719,10 @@ impl<T: RaftStoreRouter<RocksEngine> + 'static, E: Engine, L: LockManager> Tikv
         mut req: SplitRegionRequest,
         sink: UnarySink<SplitRegionResponse>,
     ) {
-        if !check_common_name(self.security_mgr.cert_allowed_cn(), &ctx) {
+        if let Err(status) = validate_common_name(&self.security_mgr, &ctx) {
+            ctx.spawn(async move {
+                sink.fail(status);
+            });
             return;
         }
         let begin_instant = Instant::now_coarse();
@@ -777,7 +809,10 @@ impl<T: RaftStoreRouter<RocksEngine> + 'static, E: Engine, L: LockManager> Tikv
         mut req: ReadIndexRequest,
         sink: UnarySink<ReadIndexResponse>,
     ) {
-        if !check_common_name(self.security_mgr.cert_allowed_cn(), &ctx) {
+        if let Err(status) = validate_common_name(&self.security_mgr, &ctx) {
+            ctx.spawn(async move {
+                sink.fail(status);
+            });
             return;
         }
         let begin_instant = Instant::now_coarse();
@@ -885,7 +920,8 @@ impl<T: RaftStoreRouter<RocksEngine> + 'static, E: Engine, L: LockManager> Tikv
         stream: RequestStream<BatchCommandsRequest>,
         mut sink: DuplexSink<BatchCommandsResponse>,
     ) {
-        if !check_common_name(self.security_mgr.cert_allowed_cn(), &ctx) {
+        if let Err(status) = validate_common_name(&self.security_mgr, &ctx) {
+            sink.set_status(status);
             return;
         }
         let (tx, rx) = unbounded(GRPC_MSG_NOTIFY_SIZE);

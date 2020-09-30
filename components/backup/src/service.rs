@@ -5,7 +5,7 @@ use futures::channel::mpsc;
 use futures::{FutureExt, SinkExt, StreamExt, TryFutureExt};
 use grpcio::{self, *};
 use kvproto::backup::*;
-use security::{check_common_name, SecurityManager};
+use security::{validate_common_name, SecurityManager};
 use tikv_util::worker::*;
 
 use super::Task;
@@ -34,7 +34,8 @@ impl Backup for Service {
         req: BackupRequest,
         mut sink: ServerStreamingSink<BackupResponse>,
     ) {
-        if !check_common_name(self.security_mgr.cert_allowed_cn(), &ctx) {
+        if let Err(status) = validate_common_name(&self.security_mgr, &ctx) {
+            sink.set_status(status);
             return;
         }
         let mut cancel = None;

@@ -11,7 +11,7 @@ use std::time::SystemTime;
 
 use encryption::EncryptionConfig;
 use grpcio::{
-    CertificateRequestType, Channel, ChannelBuilder, ChannelCredentialsBuilder, RpcContext,
+    AuthContext, CertificateRequestType, Channel, ChannelBuilder, ChannelCredentialsBuilder,
     ServerBuilder, ServerCredentialsBuilder, ServerCredentialsFetcher,
 };
 use tikv_util::collections::HashSet;
@@ -169,8 +169,8 @@ impl SecurityManager {
         }
     }
 
-    pub fn cert_allowed_cn(&self) -> &HashSet<String> {
-        &self.cfg.cert_allowed_cn
+    pub fn validate_common_name(&self, auth_context: &AuthContext) -> bool {
+        check_common_name(&self.cfg.cert_allowed_cn, auth_context)
     }
 }
 
@@ -207,22 +207,18 @@ impl ServerCredentialsFetcher for Fetcher {
 /// Check peer CN with cert-allowed-cn field.
 /// Return true when the match is successful (support wildcard pattern).
 /// Skip the check when cert-allowed-cn is not set or the secure channel is not used.
-pub fn check_common_name(cert_allowed_cn: &HashSet<String>, ctx: &RpcContext) -> bool {
+fn check_common_name(cert_allowed_cn: &HashSet<String>, auth_context: &AuthContext) -> bool {
     if cert_allowed_cn.is_empty() {
         return true;
     }
-    if let Some(auth_ctx) = ctx.auth_context() {
-        if let Some(auth_property) = auth_ctx
-            .into_iter()
-            .find(|x| x.name() == "x509_common_name")
-        {
-            let peer_cn = auth_property.value_str().unwrap();
-            match_peer_names(cert_allowed_cn, peer_cn)
-        } else {
-            false
-        }
+    if let Some(auth_property) = auth_context
+        .into_iter()
+        .find(|x| x.name() == "x509_common_name")
+    {
+        let peer_cn = auth_property.value_str().unwrap();
+        match_peer_names(cert_allowed_cn, peer_cn)
     } else {
-        true
+        false
     }
 }
 
@@ -234,6 +230,25 @@ pub fn match_peer_names(allowed_cn: &HashSet<String>, name: &str) -> bool {
         }
     }
     false
+}
+
+pub fn validate_common_name(
+    security_mgr: &SecurityManager,
+    ctx: &grpcio::RpcContext,
+) -> Result<(), grpcio::RpcStatus> {
+    match ctx.auth_context() {
+        None => Ok(()),
+        Some(a) => {
+            if !security_mgr.validate_common_name(&a) {
+                Err(grpcio::RpcStatus::new(
+                    grpcio::RpcStatusCode::UNAUTHENTICATED,
+                    Some("Check Common Name failed".to_owned()),
+                ))
+            } else {
+                Ok(())
+            }
+        }
+    }
 }
 
 #[cfg(test)]

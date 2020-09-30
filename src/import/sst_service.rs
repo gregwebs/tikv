@@ -21,7 +21,7 @@ use crate::server::CONFIG_ROCKSDB_GAUGE;
 use engine_traits::{SstExt, SstWriterBuilder};
 use raftstore::router::RaftStoreRouter;
 use raftstore::store::Callback;
-use security::{check_common_name, SecurityManager};
+use security::{validate_common_name, SecurityManager};
 use sst_importer::send_rpc_response;
 use tikv_util::future::create_stream_with_buffer;
 use tikv_util::future::paired_future_callback;
@@ -95,7 +95,10 @@ where
         req: SwitchModeRequest,
         sink: UnarySink<SwitchModeResponse>,
     ) {
-        if !check_common_name(self.security_mgr.cert_allowed_cn(), &ctx) {
+        if let Err(status) = validate_common_name(&self.security_mgr, &ctx) {
+            ctx.spawn(async move {
+                sink.fail(status);
+            });
             return;
         }
         let label = "switch_mode";
@@ -130,7 +133,10 @@ where
         stream: RequestStream<UploadRequest>,
         sink: ClientStreamingSink<UploadResponse>,
     ) {
-        if !check_common_name(self.security_mgr.cert_allowed_cn(), &ctx) {
+        if let Err(status) = validate_common_name(&self.security_mgr, &ctx) {
+            ctx.spawn(async move {
+                sink.fail(status);
+            });
             return;
         }
         let label = "upload";
@@ -177,7 +183,10 @@ where
         req: DownloadRequest,
         sink: UnarySink<DownloadResponse>,
     ) {
-        if !check_common_name(self.security_mgr.cert_allowed_cn(), &ctx) {
+        if let Err(status) = validate_common_name(&self.security_mgr, &ctx) {
+            ctx.spawn(async move {
+                sink.fail(status);
+            });
             return;
         }
         let label = "download";
@@ -229,7 +238,10 @@ where
         mut req: IngestRequest,
         sink: UnarySink<IngestResponse>,
     ) {
-        if !check_common_name(self.security_mgr.cert_allowed_cn(), &ctx) {
+        if let Err(status) = validate_common_name(&self.security_mgr, &ctx) {
+            ctx.spawn(async move {
+                sink.fail(status);
+            });
             return;
         }
         let label = "ingest";
@@ -303,7 +315,10 @@ where
         req: CompactRequest,
         sink: UnarySink<CompactResponse>,
     ) {
-        if !check_common_name(self.security_mgr.cert_allowed_cn(), &ctx) {
+        if let Err(status) = validate_common_name(&self.security_mgr, &ctx) {
+            ctx.spawn(async move {
+                sink.fail(status);
+            });
             return;
         }
         let label = "compact";
@@ -370,7 +385,10 @@ where
         req: SetDownloadSpeedLimitRequest,
         sink: UnarySink<SetDownloadSpeedLimitResponse>,
     ) {
-        if !check_common_name(self.security_mgr.cert_allowed_cn(), &ctx) {
+        if let Err(status) = validate_common_name(&self.security_mgr, &ctx) {
+            ctx.spawn(async move {
+                sink.fail(status);
+            });
             return;
         }
         let label = "set_download_speed_limit";
@@ -397,7 +415,10 @@ where
         stream: RequestStream<WriteRequest>,
         sink: ClientStreamingSink<WriteResponse>,
     ) {
-        if !check_common_name(self.security_mgr.cert_allowed_cn(), &ctx) {
+        if let Err(status) = validate_common_name(&self.security_mgr, &ctx) {
+            ctx.spawn(async move {
+                sink.fail(status);
+            });
             return;
         }
         let label = "write";

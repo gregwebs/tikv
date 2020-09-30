@@ -16,7 +16,7 @@ use kvproto::cdcpb::{
     ChangeData, ChangeDataEvent, ChangeDataRequest, Compatibility, Event, ResolvedTs,
 };
 use protobuf::Message;
-use security::{check_common_name, SecurityManager};
+use security::{validate_common_name, SecurityManager};
 use tikv_util::collections::HashMap;
 use tikv_util::mpsc::batch::{self, BatchReceiver, Sender as BatchSender, VecCollector};
 use tikv_util::worker::*;
@@ -283,7 +283,8 @@ impl ChangeData for Service {
         stream: RequestStream<ChangeDataRequest>,
         mut sink: DuplexSink<ChangeDataEvent>,
     ) {
-        if !check_common_name(self.security_mgr.cert_allowed_cn(), &ctx) {
+        if let Err(status) = validate_common_name(&self.security_mgr, &ctx) {
+            sink.set_status(status);
             return;
         }
         // TODO: make it a bounded channel.

@@ -24,7 +24,7 @@ use raftstore::coprocessor::{
     RegionChangeEvent, RegionChangeObserver, RoleObserver,
 };
 use raftstore::store::util::is_region_initialized;
-use security::{check_common_name, SecurityManager};
+use security::{validate_common_name, SecurityManager};
 use std::cell::RefCell;
 use std::fmt::{self, Display, Formatter};
 use std::rc::Rc;
@@ -869,7 +869,10 @@ impl Deadlock for Service {
         _req: WaitForEntriesRequest,
         sink: UnarySink<WaitForEntriesResponse>,
     ) {
-        if !check_common_name(self.security_mgr.cert_allowed_cn(), &ctx) {
+        if let Err(status) = validate_common_name(&self.security_mgr, &ctx) {
+            ctx.spawn(async move {
+                sink.fail(status);
+            });
             return;
         }
         let (cb, f) = paired_future_callback();
@@ -899,7 +902,8 @@ impl Deadlock for Service {
         stream: RequestStream<DeadlockRequest>,
         sink: DuplexSink<DeadlockResponse>,
     ) {
-        if !check_common_name(self.security_mgr.cert_allowed_cn(), &ctx) {
+        if let Err(status) = validate_common_name(&self.security_mgr, &ctx) {
+            ctx.spawn(sink.fail(status).map(|_| ()));
             return;
         }
         let task = Task::DetectRpc { stream, sink };

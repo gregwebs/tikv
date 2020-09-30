@@ -49,6 +49,9 @@ quick_error! {
         NotFound(msg: String) {
             display("Not Found {:?}", msg)
         }
+        UnAuthenticated(msg: String) {
+            display("Not Authenticated {:?}", msg)
+        }
         Other(err: Box<dyn error::Error + Sync + Send>) {
             from()
             cause(err.as_ref())

@@ -23,7 +23,7 @@ use kvproto::diagnosticspb::search_log_request::Target as SearchLogRequestTarget
 #[cfg(not(feature = "prost-codec"))]
 use kvproto::diagnosticspb::SearchLogRequestTarget;
 
-use security::{check_common_name, SecurityManager};
+use security::{validate_common_name, SecurityManager};
 use sysinfo::SystemExt;
 use tikv_util::timer::GLOBAL_TIMER_HANDLE;
 
@@ -63,7 +63,8 @@ impl Diagnostics for Service {
         req: SearchLogRequest,
         mut sink: ServerStreamingSink<SearchLogResponse>,
     ) {
-        if !check_common_name(self.security_mgr.cert_allowed_cn(), &ctx) {
+        if let Err(status) = validate_common_name(&self.security_mgr, &ctx) {
+            sink.set_status(status);
             return;
         }
         let log_file = if req.get_target() == SearchLogRequestTarget::Normal {
@@ -114,7 +115,10 @@ impl Diagnostics for Service {
         req: ServerInfoRequest,
         sink: UnarySink<ServerInfoResponse>,
     ) {
-        if !check_common_name(self.security_mgr.cert_allowed_cn(), &ctx) {
+        if let Err(status) = validate_common_name(&self.security_mgr, &ctx) {
+            ctx.spawn(async move {
+                sink.fail(status);
+            });
             return;
         }
         let tp = req.get_tp();
