@@ -207,6 +207,9 @@ test_util = { path = "components/test_util", default-features = false }
 tokio = { version = "0.2", features = ["macros", "rt-threaded", "time"] }
 zipf = "6.1.0"
 
+[patch.'https://github.com/pingcap/kvproto']
+kvproto = { rev = "12a663bbd4296b83e29cb2bc30c2ee4106dd84cf", git = "https://github.com/gregwebs/kvproto.git", default-features = false }
+
 [patch.crates-io]
 # TODO: remove this when new raft-rs is published.
 raft = { git = "https://github.com/tikv/raft-rs", branch = "master", default-features = false }
@@ -253,8 +256,10 @@ members = [
   "components/tidb_query_executors",
   "components/pd_client",
   "components/external_storage",
+  "components/external_storage/export",
   "components/cloud",
   "components/cloud/aws",
+  "components/cloud/gcp",
   "components/backup",
   "components/keys",
   "components/sst_importer",
@@ -265,6 +270,7 @@ members = [
   "components/raftstore",
   "components/into_other",
   "components/encryption",
+  "components/encryption/export",
   "components/error_code",
   "components/concurrency_manager",
   "components/file_system",

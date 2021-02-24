@@ -229,7 +229,7 @@ dependencies = [
  "engine_rocks",
  "engine_traits",
  "error_code",
- "external_storage",
+ "external_storage_export",
  "failure",
  "file_system",
  "futures 0.3.7",
@@ -580,7 +580,7 @@ checksum = "f54d78e30b388d4815220c8dd03fea5656b6c6d32adb59e89061552a102f8da1"
 dependencies = [
  "glob",
  "libc 0.2.86",
- "libloading",
+ "libloading 0.7.0",
 ]
 
 [[package]]
@@ -1353,30 +1353,41 @@ dependencies = [
  "futures-executor",
  "futures-io",
  "futures-util",
- "grpcio",
- "http",
- "hyper",
- "hyper-tls",
  "kvproto",
  "lazy_static",
  "matches",
  "prometheus",
  "rand 0.7.3",
  "rusoto_core",
- "rusoto_credential",
- "rusoto_mock",
- "rusoto_s3",
- "rusoto_util",
  "rust-ini",
  "slog",
  "slog-global",
  "structopt",
- "tame-gcs",
  "tame-oauth",
  "tempfile",
  "tikv_alloc",
  "tikv_util",
  "tokio",
+ "url",
+]
+
+[[package]]
+name = "external_storage_export"
+version = "0.0.1"
+dependencies = [
+ "aws",
+ "cloud",
+ "external_storage",
+ "futures 0.3.7",
+ "futures-io",
+ "futures-util",
+ "gcp",
+ "kvproto",
+ "libloading 0.5.2",
+ "matches",
+ "rust-ini",
+ "structopt",
+ "tempfile",
  "url",
 ]
 
@@ -1680,6 +1691,26 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c31b6d751ae2c7f11320402d34e41349dd1016f8d5d45e48c4312bc8625af50c"
 dependencies = [
  "byteorder",
+]
+
+[[package]]
+name = "gcp"
+version = "0.0.1"
+dependencies = [
+ "cloud",
+ "futures-util",
+ "http",
+ "hyper",
+ "hyper-tls",
+ "kvproto",
+ "matches",
+ "slog",
+ "slog-global",
+ "tame-gcs",
+ "tame-oauth",
+ "tikv_util",
+ "tokio",
+ "url",
 ]
 
 [[package]]
@@ -2117,7 +2148,7 @@ dependencies = [
 [[package]]
 name = "kvproto"
 version = "0.0.2"
-source = "git+https://github.com/pingcap/kvproto.git#3cd2fc5fad226caeffed72297e3e13a571f5592e"
+source = "git+https://github.com/gregwebs/kvproto.git?rev=12a663bbd4296b83e29cb2bc30c2ee4106dd84cf#12a663bbd4296b83e29cb2bc30c2ee4106dd84cf"
 dependencies = [
  "futures 0.3.7",
  "grpcio",
@@ -2179,6 +2210,16 @@ checksum = "fb789afcc589a08928d1e466087445ab740a0f70a2ee23d9349a0e3723d65e1b"
 dependencies = [
  "arbitrary",
  "cc",
+]
+
+[[package]]
+name = "libloading"
+version = "0.5.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f2b111a074963af1d37a139918ac6d49ad1d0d5e47f72fd55388619691a7d753"
+dependencies = [
+ "cc",
+ "winapi 0.3.8",
 ]
 
 [[package]]
@@ -4069,16 +4110,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "rusoto_util"
-version = "0.0.1"
-dependencies = [
- "async-trait",
- "rusoto_core",
- "rusoto_credential",
- "rusoto_sts",
-]
-
-[[package]]
 name = "rust-argon2"
 version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4502,7 +4533,7 @@ dependencies = [
  "engine_rocks",
  "engine_traits",
  "error_code",
- "external_storage",
+ "external_storage_export",
  "file_system",
  "futures 0.3.7",
  "futures-util",
@@ -4827,7 +4858,7 @@ dependencies = [
  "concurrency_manager",
  "crc64fast",
  "engine_traits",
- "external_storage",
+ "external_storage_export",
  "file_system",
  "futures 0.3.7",
  "futures-executor",
@@ -4977,7 +5008,7 @@ dependencies = [
  "engine_rocks",
  "engine_traits",
  "error_code",
- "external_storage",
+ "external_storage_export",
  "fail",
  "file_system",
  "futures 0.3.7",
